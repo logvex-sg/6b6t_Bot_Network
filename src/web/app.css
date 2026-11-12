@@ -3618,6 +3618,33 @@ button.primary,
   max-height: 16rem;
   overflow: auto;
 }
+.kitbot-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.6rem 1rem;
+  margin-bottom: 0.6rem;
+}
+.kitbot-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--mute);
+}
+.kitbot-form input[type="text"],
+.kitbot-form input[type="number"] {
+  padding: 0.35rem 0.5rem;
+  background: rgba(8, 12, 18, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  color: var(--bone);
+  font-size: 0.85rem;
+}
+.kitbot-form .kitbot-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
 
 
 @media (max-width: 860px) {

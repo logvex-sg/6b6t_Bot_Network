@@ -638,6 +638,35 @@ async function dispatch(fleet: FleetManager, request?: ControlRequest): Promise<
         const counts = db.importJson(document, "merge");
         return { ok: true, data: { counts, stats: db.stats() } };
       }
+      case "kitBotStart": {
+        const result = bot.startKitBot((request as { kitConfig?: Record<string, unknown> }).kitConfig as never);
+        return { ok: true, data: { result, status: bot.kitBotStatus(), config: bot.kitBotConfig() } };
+      }
+      case "kitBotStop": {
+        const result = bot.stopKitBot();
+        return { ok: true, data: { result, status: bot.kitBotStatus() } };
+      }
+      case "kitBotStatus":
+        return { ok: true, data: { active: bot.isKitBotActive(), status: bot.kitBotStatus(), config: bot.kitBotConfig() } };
+      case "kitBotConfig": {
+        const patch = (request as { kitConfig?: Record<string, unknown> }).kitConfig;
+        if (patch) bot.setKitBotConfig(patch as never);
+        return { ok: true, data: { status: bot.kitBotStatus(), config: bot.kitBotConfig() } };
+      }
+      case "kitBotServe": {
+        const { username, kit } = request as { username: string; kit?: string };
+        if (!username) return { ok: false, error: "missing username" };
+        const result = await bot.serveKit(username, kit);
+        return { ok: true, data: { result, status: bot.kitBotStatus() } };
+      }
+      case "kitBotStock": {
+        const kit = (request as { kit?: string }).kit;
+        return { ok: true, data: { stock: bot.kitBotStock(kit) } };
+      }
+      case "kitBotResetCooldowns": {
+        const result = bot.resetKitBotCooldowns();
+        return { ok: true, data: { result, status: bot.kitBotStatus() } };
+      }
       case "getSettings": {
         const { getSettingsSnapshot } = await import("../config.ts");
         return { ok: true, data: getSettingsSnapshot() };

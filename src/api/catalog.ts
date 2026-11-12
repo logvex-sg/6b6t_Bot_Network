@@ -59,6 +59,13 @@ export const API_ROUTES: ApiRoute[] = [
   { method: "GET", path: "/v1/rpc", auth: true, action: "playerList", desc: "search the player history database", body: { query: "ste" } },
   { method: "POST", path: "/v1/rpc", auth: true, action: "huntDatabaseExport", desc: "export the hunt database document" },
   { method: "POST", path: "/v1/rpc", auth: true, action: "huntDatabaseImport", desc: "merge an exported hunt database", body: { document: "{...}" } },
+  { method: "POST", path: "/v1/rpc", auth: true, action: "kitBotStart", desc: "start serving kits on chat", body: { kitConfig: { prefix: "!" } } },
+  { method: "POST", path: "/v1/rpc", auth: true, action: "kitBotStop", desc: "stop serving kits" },
+  { method: "GET", path: "/v1/rpc", auth: true, action: "kitBotStatus", desc: "kit-bot active state, kits and counters" },
+  { method: "POST", path: "/v1/rpc", auth: true, action: "kitBotConfig", desc: "live-update kit-bot settings", body: { kitConfig: { cooldownMs: 60000 } } },
+  { method: "POST", path: "/v1/rpc", auth: true, action: "kitBotServe", desc: "hand a kit to a player now", body: { username: "Steve", kit: "default" } },
+  { method: "GET", path: "/v1/rpc", auth: true, action: "kitBotStock", desc: "what the bot is carrying for the default kit" },
+  { method: "POST", path: "/v1/rpc", auth: true, action: "kitBotResetCooldowns", desc: "clear all per-player kit cooldowns" },
   { method: "POST", path: "/v1/rpc", auth: true, action: "set", desc: "autoReconnect / autoLobby flags", body: { autoReconnect: true } },
 ];
 
@@ -92,6 +99,15 @@ export function apiCatalog() {
       "playerList",
       "huntDatabaseExport",
       "huntDatabaseImport",
+    ],
+    kitbot: [
+      "kitBotStart",
+      "kitBotStop",
+      "kitBotStatus",
+      "kitBotConfig",
+      "kitBotServe",
+      "kitBotStock",
+      "kitBotResetCooldowns",
     ],
     interact: ["attack", "dig", "stopDig", "place", "activate", "swing", "chat", "command", "tabComplete"],
   };

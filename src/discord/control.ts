@@ -218,6 +218,10 @@ export function createDiscordControl(bot: FractalBot, options: DiscordControlOpt
       `\`${prefix}bh echest\` — read the nearest ender chest`,
       `\`${prefix}bh route [set x,z …|list|clear]\` — custom waypoint route`,
       `\`${prefix}bh webhook\` — send a test notification`,
+      `\`${prefix}kibot start [prefix] [cooldownSec] [distance]\` — serve kits on chat`,
+      `\`${prefix}kibot stop\` / \`${prefix}kibot status\` / \`${prefix}kibot stock\``,
+      `\`${prefix}kibot give <player> [kit]\` — hand a kit out now`,
+      `\`${prefix}kibot config prefix ! cooldown 300 distance 24\``,
       `\`${prefix}map on [mode]\` — start elytra mapping (box, spawn, ring, north, …)`,
       `\`${prefix}map on box:x1,z1,x2,z2\` — map a box`,
       `\`${prefix}map off\` / \`${prefix}map status\``,
@@ -451,6 +455,79 @@ export function createDiscordControl(bot: FractalBot, options: DiscordControlOpt
               `waypoint=${s.waypointIndex}/${s.waypointsTotal} target=${s.target ? `${s.target.x.toFixed(0)},${s.target.z.toFixed(0)}` : "none"}`,
               `explored=${s.exploredChunks} stashes=${s.stashes} players=${s.players}`,
               s.notes.length ? `notes: ${s.notes.join(" · ")}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          );
+        }
+        break;
+      }
+      case "kibot": {
+        const parts = arg.trim().split(/\s+/).filter(Boolean);
+        const sub = (parts[0] || "status").toLowerCase();
+        if (sub === "start") {
+          const kitConfig: Record<string, unknown> = {};
+          // Positional: prefix, cooldown seconds, distance
+          if (parts[1]) kitConfig.prefix = parts[1];
+          if (parts[2] && Number.isFinite(Number(parts[2]))) kitConfig.cooldownMs = Math.max(0, Number(parts[2])) * 1000;
+          if (parts[3] && Number.isFinite(Number(parts[3]))) kitConfig.maxDistance = Math.max(0, Number(parts[3]));
+          reply(bot.startKitBot(kitConfig as never));
+          break;
+        }
+        if (sub === "stop") {
+          reply(bot.stopKitBot());
+          break;
+        }
+        if (sub === "give") {
+          const username = parts[1];
+          if (!username) {
+            reply("usage: kibot give <player> [kit]");
+            break;
+          }
+          reply(await bot.serveKit(username, parts[2]));
+          break;
+        }
+        if (sub === "stock") {
+          reply(bot.kitBotStock(parts[1]));
+          break;
+        }
+        if (sub === "reset") {
+          reply(bot.resetKitBotCooldowns());
+          break;
+        }
+        if (sub === "config") {
+          const kitConfig: Record<string, unknown> = {};
+          for (let i = 1; i < parts.length; i += 2) {
+            const key = (parts[i] || "").toLowerCase();
+            const value = parts[i + 1];
+            if (value == null) break;
+            if (key === "prefix") kitConfig.prefix = value;
+            else if (key === "cooldown") kitConfig.cooldownMs = Math.max(0, Number(value)) * 1000;
+            else if (key === "distance") kitConfig.maxDistance = Math.max(0, Number(value));
+            else if (key === "announce") kitConfig.announce = value !== "off";
+            else if (key === "blacklist") kitConfig.blacklist = value.split(",").map((s) => s.trim()).filter(Boolean);
+          }
+          if (Object.keys(kitConfig).length === 0) {
+            const cfg = bot.kitBotConfig();
+            reply(`prefix=${cfg.prefix} cooldown=${cfg.cooldownMs / 1000}s distance=${cfg.maxDistance} announce=${cfg.announce} kits=${cfg.kits.map((k) => k.name).join(",")}`);
+            break;
+          }
+          bot.setKitBotConfig(kitConfig as never);
+          reply(`kit bot config updated (${Object.keys(kitConfig).join(", ")})`);
+          break;
+        }
+        // Default: status
+        {
+          const active = bot.isKitBotActive();
+          const st = bot.kitBotStatus();
+          const cfg = bot.kitBotConfig();
+          reply(
+            [
+              `kit bot ${active ? "ACTIVE" : "stopped"}`,
+              `prefix=${cfg.prefix} cooldown=${cfg.cooldownMs / 1000}s distance=${cfg.maxDistance}`,
+              `kits=${cfg.kits.map((k) => k.name).join(", ")}`,
+              st ? `served=${st.servedTotal} lastMinute=${st.servedLastMinute} onCooldown=${st.playersOnCooldown}` : "",
+              `stock: ${bot.kitBotStock()}`,
             ]
               .filter(Boolean)
               .join("\n"),

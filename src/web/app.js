@@ -3715,6 +3715,117 @@ function wireHuntButtons() {
 }
 wireHuntButtons();
 
+// --- Kit bot -------------------------------------------------------------------------------------
+async function refreshKitBot() {
+  if (!selectedBotId && !status?.connected) return;
+  const forEl = document.getElementById("kitbot-for");
+  if (forEl) forEl.textContent = selectedBotId ? `Profile: ${selectedBotId}` : "Live bot";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  try {
+    const body = await rpc("kitBotStatus", {});
+    if (!body.ok) return;
+    const data = body.data || {};
+    const cfg = body.data?.config || {};
+    const s = data.status || {};
+    set("kitbot-state", data.active ? "active" : "stopped");
+    const pill = document.getElementById("kitbot-state");
+    if (pill) pill.setAttribute("data-tone", data.active ? "live" : "neutral");
+    set("kb-active", data.active ? "yes" : "no");
+    set("kb-prefix", cfg.prefix ?? "—");
+    set("kb-cooldown", cfg.cooldownMs != null ? `${cfg.cooldownMs / 1000}s` : "—");
+    set("kb-distance", cfg.maxDistance === 0 ? "anywhere" : cfg.maxDistance ?? "—");
+    set("kb-kits", (cfg.kits || []).map((k) => k.name).join(", ") || "—");
+    set("kb-served", s.servedTotal ?? 0);
+    set("kb-perminute", s.servedLastMinute ?? 0);
+    set("kb-oncooldown", s.playersOnCooldown ?? 0);
+    // Seed the settings form only when the tab is freshly shown (avoid clobbering typing).
+    const prefixEl = document.getElementById("kitbot-prefix");
+    if (prefixEl && document.activeElement !== prefixEl) {
+      prefixEl.value = cfg.prefix ?? "";
+      const cd = document.getElementById("kitbot-cooldown");
+      if (cd) cd.value = cfg.cooldownMs != null ? String(cfg.cooldownMs / 1000) : "";
+      const dist = document.getElementById("kitbot-distance");
+      if (dist) dist.value = cfg.maxDistance != null ? String(cfg.maxDistance) : "";
+      const ann = document.getElementById("kitbot-announce");
+      if (ann) ann.checked = Boolean(cfg.announce);
+      const walk = document.getElementById("kitbot-walk");
+      if (walk) walk.checked = Boolean(cfg.walkToPlayer);
+      const bl = document.getElementById("kitbot-blacklist");
+      if (bl && document.activeElement !== bl) bl.value = (cfg.blacklist || []).join(", ");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function wireKitBotButtons() {
+  const out = document.getElementById("kitbot-output");
+  const setOut = (text) => {
+    if (out) out.textContent = text;
+  };
+  const run = (action, extra) =>
+    rpc(action, extra)
+      .then((body) => {
+        if (!body.ok) setOut(`error: ${body.error || "request failed"}`);
+        else if (body.data?.result) setOut(body.data.result);
+        return refreshKitBot();
+      })
+      .catch((e) => setOut(`error: ${e?.message || e}`));
+
+  document.getElementById("kitbot-start")?.addEventListener("click", () => {
+    const prefix = document.getElementById("kitbot-prefix")?.value || undefined;
+    void run("kitBotStart", { kitConfig: prefix ? { prefix } : undefined });
+  });
+  document.getElementById("kitbot-stop")?.addEventListener("click", () => void run("kitBotStop"));
+  document.getElementById("kitbot-status")?.addEventListener("click", () => void refreshKitBot());
+  document.getElementById("kitbot-reset")?.addEventListener("click", () => void run("kitBotResetCooldowns"));
+  document.getElementById("kitbot-stock")?.addEventListener("click", async () => {
+    setOut("…");
+    try {
+      const body = await rpc("kitBotStock", {});
+      setOut(body.ok ? body.data?.stock || "no stock" : `error: ${body.error}`);
+    } catch (e) {
+      setOut(`error: ${e?.message || e}`);
+    }
+  });
+
+  document.getElementById("kitbot-save")?.addEventListener("click", () => {
+    const kitConfig = {
+      prefix: document.getElementById("kitbot-prefix")?.value || "!",
+      cooldownMs: Math.max(0, Number(document.getElementById("kitbot-cooldown")?.value || 0)) * 1000,
+      maxDistance: Math.max(0, Number(document.getElementById("kitbot-distance")?.value || 0)),
+      announce: Boolean(document.getElementById("kitbot-announce")?.checked),
+      walkToPlayer: Boolean(document.getElementById("kitbot-walk")?.checked),
+      blacklist: (document.getElementById("kitbot-blacklist")?.value || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
+    void run("kitBotConfig", { kitConfig });
+  });
+
+  document.getElementById("kitbot-give")?.addEventListener("click", async () => {
+    const username = document.getElementById("kitbot-give-player")?.value || "";
+    const kit = document.getElementById("kitbot-give-kit")?.value || undefined;
+    if (!username) {
+      setOut("Enter a player name.");
+      return;
+    }
+    setOut("…");
+    try {
+      const body = await rpc("kitBotServe", { username, kit });
+      setOut(body.ok ? body.data?.result || "served" : `error: ${body.error}`);
+      void refreshKitBot();
+    } catch (e) {
+      setOut(`error: ${e?.message || e}`);
+    }
+  });
+}
+wireKitBotButtons();
+
 document.getElementById("detect-clear")?.addEventListener("click", () => {
   detectionEvents.length = 0;
   detectionSeenIds.clear();
@@ -3751,6 +3862,7 @@ setInterval(() => {
   if (document.hidden) return;
   if (activeDashboardTab() === "detect") void refreshDetection();
   if (activeDashboardTab() === "hunt") void refreshHunt();
+  if (activeDashboardTab() === "kitbot") void refreshKitBot();
 }, 5000);
 
 // Status HTTP backup — WS already streams status. Keep this slow on mobile.
@@ -4954,6 +5066,13 @@ const MODULES = [
     icon: "⛏",
     keywords: ["hunt", "base", "stash", "elytra", "player", "explore", "bh", "loot", "database"],
   },
+  {
+    id: "kitbot",
+    name: "Kit Bot",
+    desc: "Serve kits on chat",
+    icon: "🎁",
+    keywords: ["kit", "kitbot", "give", "serve", "drop", "prefix", "handout"],
+  },
 ];
 /** Utilities reachable from the top bar (not sidebar modules) */
 const UTILITIES = [
@@ -5066,6 +5185,7 @@ function activateTab(name) {
   }
   if (tabName === "detect") void refreshDetection();
   if (tabName === "hunt") void refreshHunt();
+  if (tabName === "kitbot") void refreshKitBot();
   if (tabName === "settings") {
     void loadSettingsForm(0);
     const bot = (fleetState?.bots || []).find((b) => b.id === selectedBotId);
@@ -5187,7 +5307,7 @@ document.getElementById("sidebar-search")?.addEventListener("keydown", (e) => {
 renderSideNav("");
 
 const hashTab = (location.hash || "").replace(/^#/, "");
-const valid = new Set(["play", "map", "detect", "announce", "hunt", "settings", "log"]);
+const valid = new Set(["play", "map", "detect", "announce", "hunt", "kitbot", "settings", "log"]);
 const legacy = {
   home: "play",
   profiles: "play",

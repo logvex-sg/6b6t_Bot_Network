@@ -32,7 +32,8 @@ src/
 ├── discord/control.ts       optional Discord command handling + log mirror
 ├── fleet/FleetManager.ts    multi-account supervisor
 ├── hunt/                    autonomous base hunting (see below)
-├── settings/                Settings/ layout, profiles, homes, hunt config
+├── kitbot/                  kit serving on chat (see below)
+├── settings/                Settings/ layout, profiles, homes, hunt + kitbot config
 ├── minecraft/               join/auth/lobby/protocol/mapping helpers
 ├── mapper/                  Xaero region writer bridge
 └── web/                     dashboard (index.html, app.js, app.css)
@@ -78,6 +79,35 @@ rules.
   quarantined as `*.corrupt-<ts>`, de-duplicated records, pruned by age.
 - Hunt config: `Settings/hunt/<server>/config.json` — atomic, per-server, merged over defaults on load.
 - `Settings/hunt/` is git-ignored. Never commit it.
+
+## Kit bot
+
+The kit bot lives in `src/kitbot/` and hands items to players who type a chat prefix (`!kit` by default).
+
+- **Pure** — `chatParse.ts` (chat line → username + prefix match), `kit.ts` (kit definitions, stock
+  planning, cooldowns, rate limiter, eligibility).
+- **Live** — `runtime.ts` (reads the inventory, drops via `toss`/`tossStack`), `controller.ts` (the serve
+  path and every guard rail).
+
+`FractalBot` calls `KitBotController.handleChat` from the chat hook **only when the kit bot is active**, and
+the controller returns `null` for anything that is not a kit request — an idle kit bot costs nothing.
+`src/settings/kitBotConfigStore.ts` persists the per-server config to `Settings/kitbot/<server>/config.json`.
+
+Read `docs/KIT_BOT.md` before changing kit-bot behaviour.
+
+### Hard rules
+
+- **Never create items.** Only `bot.toss` / `bot.tossStack` — the same calls a player makes. If the item is
+  not in the inventory, nothing is dropped.
+- **Never react to your own chat.** `checkEligibility` rejects the bot's own username; this is the kit-bot
+  feedback loop guard.
+- **A chat handler never throws.** `handleChat` catches everything and returns a reason; `FractalBot` wraps
+  the call again.
+- **Report, do not pretend.** Every refusal returns a reason (`denied-far`, `out-of-stock`, `rate-limited`,
+  …) which the CLI / Discord / dashboard surface. Where the server prevents an operation, say so.
+- **Bounded memory.** Cooldowns are pruned each serve; the rate limiter keeps at most `maxServesPerMinute`
+  timestamps.
+- `Settings/kitbot/` is git-ignored. Never commit it.
 
 ## Conventions
 

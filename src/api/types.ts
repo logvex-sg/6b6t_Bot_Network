@@ -172,6 +172,8 @@ export interface BotStatus {
   mapping?: unknown;
   /** Base-hunting controller snapshot, or null when hunting has never started. */
   hunt?: unknown;
+  /** Kit-bot snapshot, or null when the kit bot has never started. */
+  kitBot?: unknown;
 }
 
 /** Payload from prismarine-auth / mineflayer onMsaCode. */
@@ -322,6 +324,8 @@ export interface FractalBotEvents {
   msaCode: (code: MsaDeviceCode) => void;
   /** Base-hunting notification (stash found, emergency, …). */
   huntNotification: (notification: unknown) => void;
+  /** Kit-bot activity (served, denied, out of stock, …). */
+  kitBotEvent: (event: unknown) => void;
 }
 
 export type DetectionKind =
@@ -418,6 +422,13 @@ export type ControlRequest =
   | { action: "playerList"; query?: string }
   | { action: "huntDatabaseExport" }
   | { action: "huntDatabaseImport"; document?: string }
+  | { action: "kitBotStart"; kitConfig?: Record<string, unknown> }
+  | { action: "kitBotStop" }
+  | { action: "kitBotStatus" }
+  | { action: "kitBotConfig"; kitConfig?: Record<string, unknown> }
+  | { action: "kitBotServe"; username: string; kit?: string }
+  | { action: "kitBotStock"; kit?: string }
+  | { action: "kitBotResetCooldowns" }
   | { action: "getSettings" }
   | { action: "saveSettings"; values: Record<string, string> }
   | { action: "fleetStatus" }

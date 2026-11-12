@@ -20,9 +20,11 @@ Offline-account join with stored `/login`, dual-portal lobby navigation, auto-re
 - **Fleet** — multiple accounts with per-bot features: online, hunt, map, announcements, anti-AFK
 - **Elytra mapper** — flight + Xaero region writer (box / spawn / ring / direction modes)
 - **Base hunting** — autonomous exploration: elytra flight, stash scanning, ender-chest restocking, Mending, survival guard, persistent per-server database
-- **Optional Discord** — remote `!status`, `!chat`, `!map`, `!bh …`, etc.
+- **Kit bot** — hand items out to players who type a chat prefix (`!kit`); prefix-gated, proximity/cooldown/rate-limited, drops real items only
+- **Optional Discord** — remote `!status`, `!chat`, `!map`, `!bh …`, `!kibot …`, etc.
 
 > The base-hunting subsystem is documented in depth in **[docs/BASE_HUNTING.md](docs/BASE_HUNTING.md)**.
+> The kit bot is documented in **[docs/KIT_BOT.md](docs/KIT_BOT.md)**.
 
 ---
 
@@ -110,12 +112,18 @@ fractalbot bh status
 fractalbot bh stash          # nearest recorded stashes
 fractalbot bh restock        # restock from the nearest ender chest
 fractalbot bh stop
+
+fractalbot kibot start       # serve kits to players who type `!kit`
+fractalbot kibot status
+fractalbot kibot give Steve  # hand a kit out now
+fractalbot kibot stop
 ```
 
 Other useful commands: `goto`, `look`, `walk`, `stop`, `attack`, `dig`, `inv`, `players`, `view`, `shell`, `completion`.
 
 See **[docs/BASE_HUNTING.md](docs/BASE_HUNTING.md)** for the full `bh` command set, the hunt config, and
 how the autonomous controller schedules flight, scanning, Mending and ender-chest restocking.
+See **[docs/KIT_BOT.md](docs/KIT_BOT.md)** for the kit bot, its safety gates and its config.
 
 ### Discord (optional)
 

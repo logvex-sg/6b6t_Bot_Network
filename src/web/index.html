@@ -629,6 +629,72 @@
         </div>
       </section>
 
+      <!-- ========== KIT BOT (serve kits on chat) ========== -->
+      <section class="panel kitbot-panel tab-panel" id="kitbot-panel" data-tab="kitbot" role="tabpanel" hidden>
+        <div class="section-head">
+          <div>
+            <h2>Kit Bot</h2>
+            <p class="hint" id="kitbot-for">Select a profile first</p>
+          </div>
+          <span class="pill" id="kitbot-state" data-tone="neutral">stopped</span>
+        </div>
+
+        <div class="card-block">
+          <div class="hunt-buttons">
+            <button type="button" id="kitbot-start" class="primary">Start</button>
+            <button type="button" id="kitbot-stop" class="danger">Stop</button>
+            <button type="button" id="kitbot-status">Refresh</button>
+            <button type="button" id="kitbot-stock">Stock</button>
+            <button type="button" id="kitbot-reset">Reset cooldowns</button>
+          </div>
+          <p class="hint">
+            Players type the prefix in chat to receive a kit (default <code>!kit</code>). Hand-outs use normal
+            item drops — the bot must be standing near the player.
+          </p>
+        </div>
+
+        <div class="card-block">
+          <h3>Settings</h3>
+          <div class="kitbot-form">
+            <label>Prefix <input type="text" id="kitbot-prefix" placeholder="!" /></label>
+            <label>Cooldown (s) <input type="number" id="kitbot-cooldown" min="0" step="10" /></label>
+            <label>Max distance (blocks, 0 = anywhere) <input type="number" id="kitbot-distance" min="0" step="1" /></label>
+            <label class="kitbot-check"><input type="checkbox" id="kitbot-announce" /> Announce in chat on hand-out</label>
+            <label class="kitbot-check"><input type="checkbox" id="kitbot-walk" /> Walk to the player before dropping</label>
+            <label>Blacklist (comma-separated) <input type="text" id="kitbot-blacklist" placeholder="griefer, spammer" /></label>
+          </div>
+          <div class="hunt-buttons">
+            <button type="button" id="kitbot-save" class="primary">Save settings</button>
+          </div>
+        </div>
+
+        <div class="card-block">
+          <h3>Status</h3>
+          <div class="hunt-status" id="kitbot-status-grid">
+            <div><dt>active</dt><dd id="kb-active">—</dd></div>
+            <div><dt>prefix</dt><dd id="kb-prefix">—</dd></div>
+            <div><dt>cooldown</dt><dd id="kb-cooldown">—</dd></div>
+            <div><dt>distance</dt><dd id="kb-distance">—</dd></div>
+            <div><dt>kits</dt><dd id="kb-kits">—</dd></div>
+            <div><dt>served total</dt><dd id="kb-served">—</dd></div>
+            <div><dt>served / min</dt><dd id="kb-perminute">—</dd></div>
+            <div><dt>on cooldown</dt><dd id="kb-oncooldown">—</dd></div>
+          </div>
+        </div>
+
+        <div class="card-block">
+          <h3>Hand out a kit</h3>
+          <div class="kitbot-form">
+            <label>Player <input type="text" id="kitbot-give-player" placeholder="Steve" /></label>
+            <label>Kit <input type="text" id="kitbot-give-kit" placeholder="default" /></label>
+          </div>
+          <div class="hunt-buttons">
+            <button type="button" id="kitbot-give" class="primary">Give now</button>
+          </div>
+          <pre class="hunt-output" id="kitbot-output">—</pre>
+        </div>
+      </section>
+
       <!-- ========== SETTINGS (general / process + dashboard) ========== -->
       <section class="panel settings tab-panel" id="settings-panel" data-tab="settings" role="tabpanel" hidden>
         <div class="settings-head">

@@ -23,4 +23,6 @@ Settings/serverlistener*.ndjson
 Settings/homes/
 Settings/homes/*.json
 Settings/hunt/
-Settings/hunt-export.json.openhands/
+Settings/kitbot/
+Settings/hunt-export.json
+.openhands/

@@ -33,6 +33,9 @@ import { readMendingCandidates, selectMendingTarget } from "../hunt/mendingRunti
 import { readSurvivalSnapshot } from "../hunt/survivalRuntime.ts";
 import { findEnderChest, openEnderChest, readOpenContainer, closeEnderChest } from "../hunt/enderChestRuntime.ts";
 import { loadHuntConfig, saveHuntConfig } from "../settings/huntConfigStore.ts";
+import { KitBotController, type KitBotEvent, type KitBotStatus } from "../kitbot/controller.ts";
+import type { KitBotConfig } from "../kitbot/kit.ts";
+import { loadKitBotConfig, saveKitBotConfig } from "../settings/kitBotConfigStore.ts";
 
 // Install before any bot connects (chat packets can arrive immediately after login)
 try {
@@ -157,6 +160,10 @@ export class FractalBot extends EventEmitter {
   private huntTick: NodeJS.Timeout | null = null;
   /** Wall-clock of the last hunt tick, so the interval cannot pile up. */
   private huntTickBusy = false;
+  /** Kit bot controller (created lazily, lives as long as this bot). */
+  private kitbot: KitBotController | null = null;
+  /** True while the kit bot should react to chat. */
+  private kitbotActive = false;
   /** Most recent attacker, used to name a killer on death. */
   private lastAttacker: { username: string; at: number } | null = null;
   /** Last health value seen, so a drop can be attributed to an attacker. */
@@ -280,6 +287,7 @@ export class FractalBot extends EventEmitter {
       huntingPortal: Boolean(this.navigator?.hunting),
       mapping: this.mapper.status(),
       hunt: this.hunt?.status() ?? null,
+      kitBot: this.kitbot ? { ...this.kitbot.status(), active: this.kitbotActive } : null,
     };
   }
 
@@ -423,6 +431,114 @@ export class FractalBot extends EventEmitter {
   /** The current custom waypoint route (chunk coordinates). */
   huntRoute(): Array<{ x: number; z: number }> {
     return this.huntController().getWaypoints();
+  }
+
+  // --- Kit bot ------------------------------------------------------------------------------------
+
+  /**
+   * Lazily create the kit-bot controller. It reads the per-server config from `Settings/kitbot/<server>/`
+   * and routes every hand-out through normal `toss` calls.
+   */
+  private kitbotController(): KitBotController {
+    if (this.kitbot) return this.kitbot;
+    const server = `${this.config.host}:${this.config.port}`;
+    this.kitbot = new KitBotController(
+      {
+        requireBot: () => this.requireBot(),
+        chat: (message) => {
+          try {
+            this.bot?.chat(message);
+          } catch {
+            /* ignore */
+          }
+        },
+        selfUsername: () => this.getStatus().username || this.config.username || "",
+        onEvent: (event) => this.onKitBotEvent(event),
+      },
+      loadKitBotConfig(server),
+    );
+    return this.kitbot;
+  }
+
+  private onKitBotEvent(event: KitBotEvent): void {
+    if (event.kind === "served") {
+      log.info(`[kitbot] served ${event.kit} to ${event.username} (${event.detail ?? ""})`);
+    } else if (event.kind === "out-of-stock" || event.kind === "inventory-full") {
+      log.warn(`[kitbot] ${event.kind} for ${event.username}`);
+    }
+    this.emit("kitBotEvent", event);
+  }
+
+  /** Start serving kits. */
+  startKitBot(config?: Partial<KitBotConfig>): string {
+    if (!this.bot?.entity) return "not connected";
+    const controller = this.kitbotController();
+    if (config) {
+      controller.setConfig(config);
+      this.persistKitBotConfig();
+    }
+    this.kitbotActive = true;
+    this.emit("status", this.getStatus());
+    return `kit bot active — players type "${controller.getConfig().prefix}kit"`;
+  }
+
+  stopKitBot(): string {
+    if (!this.kitbotActive) return "kit bot not running";
+    this.kitbotActive = false;
+    this.emit("status", this.getStatus());
+    return "kit bot stopped";
+  }
+
+  kitBotStatus(): KitBotStatus | null {
+    return this.kitbot?.status() ?? null;
+  }
+
+  isKitBotActive(): boolean {
+    return this.kitbotActive;
+  }
+
+  kitBotConfig(): KitBotConfig {
+    return this.kitbotController().getConfig();
+  }
+
+  setKitBotConfig(patch: Partial<KitBotConfig>): KitBotConfig {
+    const config = this.kitbotController().setConfig(patch);
+    this.persistKitBotConfig();
+    return config;
+  }
+
+  private persistKitBotConfig(): void {
+    saveKitBotConfig(`${this.config.host}:${this.config.port}`, this.kitbotController().getConfig());
+  }
+
+  /** Hand a kit to `username` on demand (CLI / dashboard / Discord). */
+  async serveKit(username: string, kitName?: string): Promise<string> {
+    const controller = this.kitbotController();
+    const outcome = await controller.serve(username, kitName);
+    if (outcome.ok) return `served ${kitName ?? controller.getConfig().defaultKit} to ${username} (${outcome.dropped} items)`;
+    return `could not serve ${username}: ${outcome.message ?? outcome.reason ?? "unknown reason"}`;
+  }
+
+  /** What the bot is currently carrying for the default kit (or a named one). */
+  kitBotStock(kitName?: string): string {
+    return this.kitbotController().stockSummary(kitName);
+  }
+
+  /** Clears all per-player kit cooldowns. */
+  resetKitBotCooldowns(): string {
+    this.kitbotController().resetCooldowns();
+    return "kit cooldowns cleared";
+  }
+
+  /**
+   * Feeds a chat line to the kit bot. Called from the chat event; returns immediately when the bot is not
+   * active so an idle kit bot costs nothing.
+   */
+  private handleKitBotChat(raw: string): void {
+    if (!this.kitbotActive || !this.kitbot) return;
+    void this.kitbot.handleChat(raw).catch((error) => {
+      log.warn("[kitbot] chat handler failed", { err: error instanceof Error ? error.message : error });
+    });
   }
 
   /** Live elytra status for the currently equipped elytra and the best spare. */
@@ -2027,6 +2143,7 @@ export class FractalBot extends EventEmitter {
       this.lastChatAt = now;
       this.lastChat = text;
       this.emit("chat", { raw: text, timestamp: now });
+      this.handleKitBotChat(text);
     };
     bot.on("messagestr", (message) => emitChatLine(message));
     bot.on("message", (jsonMsg) => emitChatLine(jsonMsg));
@@ -2594,6 +2711,8 @@ export class FractalBot extends EventEmitter {
       }
       this.stopHuntTicker();
     }
+    // Pause the kit bot too: serving kits needs a live entity and inventory.
+    this.kitbotActive = false;
     this.auth?.destroy();
     this.auth = null;
     this.navigator = null;

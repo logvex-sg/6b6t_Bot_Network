@@ -630,6 +630,82 @@ function registerHuntCommands(program: Command, loadConfig: () => FractalConfig)
       const document = fs.readFileSync(resolved, "utf8");
       await proxyOrFail(loadConfig(), { action: "huntDatabaseImport", document });
     });
+
+  const kibot = program.command("kibot").description("Serve kits to players who type a chat prefix");
+
+  kibot
+    .command("start")
+    .description("Start serving kits on chat")
+    .option("-p, --prefix <prefix>", "chat prefix players must type")
+    .option("-c, --cooldown <seconds>", "per-player cooldown in seconds")
+    .option("-d, --distance <blocks>", "only serve players within this many blocks (0 = anywhere)")
+    .option("--no-announce", "do not reply in chat when a kit is handed out")
+    .option("--walk", "walk to the player before dropping")
+    .action(async (opts: { prefix?: string; cooldown?: string; distance?: string; announce?: boolean; walk?: boolean }) => {
+      const kitConfig: Record<string, unknown> = {};
+      if (opts.prefix) kitConfig.prefix = opts.prefix;
+      if (opts.cooldown) kitConfig.cooldownMs = Math.max(0, Number(opts.cooldown)) * 1000;
+      if (opts.distance != null) kitConfig.maxDistance = Math.max(0, Number(opts.distance));
+      if (opts.announce === false) kitConfig.announce = false;
+      if (opts.walk) kitConfig.walkToPlayer = true;
+      await proxyOrFail(loadConfig(), { action: "kitBotStart", kitConfig });
+    });
+
+  kibot.command("stop").description("Stop serving kits").action(async () => {
+    await proxyOrFail(loadConfig(), { action: "kitBotStop" });
+  });
+
+  kibot.command("status").description("Show kit-bot state, kits and counters").action(async () => {
+    await proxyOrFail(loadConfig(), { action: "kitBotStatus" });
+  });
+
+  kibot
+    .command("stock")
+    .description("Show what the bot is carrying for the default kit")
+    .argument("[kit]", "kit name")
+    .action(async (kit?: string) => {
+      await proxyOrFail(loadConfig(), { action: "kitBotStock", kit });
+    });
+
+  kibot
+    .command("give")
+    .description("Hand a kit to a player now (ignores cooldown for the target)")
+    .argument("<username>", "player name")
+    .argument("[kit]", "kit name")
+    .action(async (username: string, kit?: string) => {
+      await proxyOrFail(loadConfig(), { action: "kitBotServe", username, kit });
+    });
+
+  kibot.command("reset").description("Clear all per-player kit cooldowns").action(async () => {
+    await proxyOrFail(loadConfig(), { action: "kitBotResetCooldowns" });
+  });
+
+  kibot
+    .command("config")
+    .description("Show or update kit-bot settings")
+    .option("-p, --prefix <prefix>", "chat prefix")
+    .option("-c, --cooldown <seconds>", "per-player cooldown in seconds")
+    .option("-d, --distance <blocks>", "max serve distance (0 = anywhere)")
+    .option("--announce <on|off>", "reply in chat on hand-out")
+    .option("--blacklist <names>", "comma-separated player names to never serve")
+    .action(async (opts: { prefix?: string; cooldown?: string; distance?: string; announce?: string; blacklist?: string }) => {
+      const kitConfig: Record<string, unknown> = {};
+      if (opts.prefix) kitConfig.prefix = opts.prefix;
+      if (opts.cooldown) kitConfig.cooldownMs = Math.max(0, Number(opts.cooldown)) * 1000;
+      if (opts.distance != null) kitConfig.maxDistance = Math.max(0, Number(opts.distance));
+      if (opts.announce != null) kitConfig.announce = opts.announce !== "off";
+      if (opts.blacklist != null) {
+        kitConfig.blacklist = opts.blacklist
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      if (Object.keys(kitConfig).length === 0) {
+        await proxyOrFail(loadConfig(), { action: "kitBotStatus" });
+        return;
+      }
+      await proxyOrFail(loadConfig(), { action: "kitBotConfig", kitConfig });
+    });
 }
 
 function parseInvCommand(opRaw: string, slotRaw?: string, extra?: string): ControlRequest {
