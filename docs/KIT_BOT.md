@@ -23,7 +23,46 @@ It never creates items, never touches the network protocol, and never runs while
 
 ---
 
-## Quick start
+## Standalone mode — one process, one web page (recommended)
+
+The full client splits the bot (a daemon that serves the control API) from the CLI (a client that talks to
+it). That is necessary for a fleet, but overkill for a single kit bot: you have to keep the daemon alive,
+`npm link` the CLI, and edit `Settings/settings.json` before anything works.
+
+**Standalone mode** collapses all of that into one process with a web page for control:
+
+```bash
+npm run kibot
+```
+
+It prints a URL — open it in any browser on the same machine:
+
+```
+Kit bot running. Open:  http://127.0.0.1:37777
+```
+
+The page lets you:
+
+- Enter **host / port / username / password / version** and press **Connect** — no file editing.
+- **Start / Stop** serving, view **Stock**, and read live **status** (health, food, position, world, kits,
+  served counts, event log).
+- Edit **kit settings** (prefix, cooldown, distance, announce, walk, blacklist) and save them.
+- **Give a kit now** to a named player.
+
+It reuses the exact same tested pieces the full client uses — `attachAuth` for the `/login` handshake,
+`createPortalNavigator` to walk the lobby portals into the survival world, and `KitBotController` for the
+serve path and every guard rail. It auto-reconnects if kicked, and the credentials are stored in
+`Settings/kitbot-standalone.json` (git-ignored, mode 0600) only after you press Connect.
+
+Change the port with `KITBOT_PORT=12345 npm run kibot`. The page binds to `127.0.0.1` only, so it is not
+reachable from other machines.
+
+Use standalone mode when you want *a kit bot*. Use the daemon + CLI below when you want it as one part of a
+managed fleet.
+
+---
+
+## Quick start (fleet / daemon mode)
 
 ```bash
 fractalbot join                 # connect the bot

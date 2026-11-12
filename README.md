@@ -20,7 +20,7 @@ Offline-account join with stored `/login`, dual-portal lobby navigation, auto-re
 - **Fleet** — multiple accounts with per-bot features: online, hunt, map, announcements, anti-AFK
 - **Elytra mapper** — flight + Xaero region writer (box / spawn / ring / direction modes)
 - **Base hunting** — autonomous exploration: elytra flight, stash scanning, ender-chest restocking, Mending, survival guard, persistent per-server database
-- **Kit bot** — hand items out to players who type a chat prefix (`!kit`); prefix-gated, proximity/cooldown/rate-limited, drops real items only
+- **Kit bot** — hand items out to players who type a chat prefix (`!kit`); prefix-gated, proximity/cooldown/rate-limited, drops real items only. Run it standalone with `npm run kibot` (browser control page, no config editing)
 - **Optional Discord** — remote `!status`, `!chat`, `!map`, `!bh …`, `!kibot …`, etc.
 
 > The base-hunting subsystem is documented in depth in **[docs/BASE_HUNTING.md](docs/BASE_HUNTING.md)**.
@@ -117,6 +117,8 @@ fractalbot kibot start       # serve kits to players who type `!kit`
 fractalbot kibot status
 fractalbot kibot give Steve  # hand a kit out now
 fractalbot kibot stop
+
+npm run kibot                # standalone kit bot: one process + browser control page (no config editing)
 ```
 
 Other useful commands: `goto`, `look`, `walk`, `stop`, `attack`, `dig`, `inv`, `players`, `view`, `shell`, `completion`.

@@ -21,7 +21,8 @@
     "test": "npx tsx --test src/minecraft/lobby/portals.test.ts src/minecraft/lobby/navigator.test.ts \"src/hunt/*.test.ts\" \"src/settings/*.test.ts\" \"src/kitbot/*.test.ts\"",
     "typecheck": "npx tsc -p tsconfig.json --noEmit",
     "build": "npx tsc -p tsconfig.json --noEmit",
-    "lint": "npx tsc -p tsconfig.json --noEmit"
+    "lint": "npx tsc -p tsconfig.json --noEmit",
+    "kibot": "npx tsx src/kitbot/standalone.ts"
   },
   "engines": {
     "node": ">=20"

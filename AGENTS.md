@@ -84,6 +84,15 @@ rules.
 
 The kit bot lives in `src/kitbot/` and hands items to players who type a chat prefix (`!kit` by default).
 
+Two ways to run it:
+
+- **Standalone** — `npm run kibot` starts `src/kitbot/standalone.ts`: one process that connects a bot, walks
+  the lobby, serves kits, and hosts a control page on `http://127.0.0.1:37777`. It needs no daemon, no
+  `npm link` and no hand-edited config — credentials and kit settings are entered in the page and persisted
+  to `Settings/kitbot-standalone.json`. This is the recommended path for a single kit bot.
+- **Fleet** — the `fractalbot kibot …` CLI / Discord / dashboard commands, which proxy over the control API
+  to a bot started with `fractalbot join`.
+
 - **Pure** — `chatParse.ts` (chat line → username + prefix match), `kit.ts` (kit definitions, stock
   planning, cooldowns, rate limiter, eligibility).
 - **Live** — `runtime.ts` (reads the inventory, drops via `toss`/`tossStack`), `controller.ts` (the serve
@@ -92,6 +101,10 @@ The kit bot lives in `src/kitbot/` and hands items to players who type a chat pr
 `FractalBot` calls `KitBotController.handleChat` from the chat hook **only when the kit bot is active**, and
 the controller returns `null` for anything that is not a kit request — an idle kit bot costs nothing.
 `src/settings/kitBotConfigStore.ts` persists the per-server config to `Settings/kitbot/<server>/config.json`.
+
+`standalone.ts` reuses the same tested pieces rather than reimplementing them: `attachAuth` for the in-game
+`/login`, `createPortalNavigator` for the lobby portal walk, and `KitBotController` for the serve path. It
+does **not** reimplement or duplicate that logic — keep it that way.
 
 Read `docs/KIT_BOT.md` before changing kit-bot behaviour.
 
@@ -107,7 +120,8 @@ Read `docs/KIT_BOT.md` before changing kit-bot behaviour.
   …) which the CLI / Discord / dashboard surface. Where the server prevents an operation, say so.
 - **Bounded memory.** Cooldowns are pruned each serve; the rate limiter keeps at most `maxServesPerMinute`
   timestamps.
-- `Settings/kitbot/` is git-ignored. Never commit it.
+- `Settings/kitbot/` is git-ignored. Never commit it. The standalone config `Settings/kitbot-standalone.json`
+  holds credentials — keep it git-ignored and never print it.
 
 ## Conventions
 
